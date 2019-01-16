@@ -117,10 +117,12 @@ require (
 	github.com/tinylib/msgp v1.1.0 // indirect
 	github.com/tylerb/graceful v1.2.15
 	github.com/willf/bitset v1.1.9 // indirect
+	github.com/xlab/treeprint v0.0.0-20181112141820-a009c3971eca // indirect
 	github.com/yudai/gojsondiff v1.0.0
 	github.com/yudai/golcs v0.0.0-20170316035057-ecda9a501e82 // indirect
 	github.com/yudai/pp v2.0.1+incompatible // indirect
 	go.uber.org/zap v1.9.1
+	golang.org/x/arch v0.0.0-20181203225421-5a4828bb7045 // indirect
 	golang.org/x/crypto v0.0.0-20181203042331-505ab145d0a9
 	golang.org/x/net v0.0.0-20181106065722-10aee1819953
 	golang.org/x/oauth2 v0.0.0-20181017192945-9dcd33a902f4
