@@ -481,8 +481,8 @@ func (m *Launcher) run(ctx context.Context) (err error) {
 
 // MustExecuteQuery executes the provided query panicking if an error is encountered.
 // Callers of MustExecuteQuery must call Done on the returned QueryResults.
-func (p *Launcher) MustExecuteQuery(orgID platform.ID, query string) *QueryResults {
-	results, err := p.ExecuteQuery(orgID, query)
+func (p *Launcher) MustExecuteQuery(orgID platform.ID, query string, auth *platform.Authorization) *QueryResults {
+	results, err := p.ExecuteQuery(orgID, query, auth)
 	if err != nil {
 		panic(err)
 	}
@@ -491,15 +491,24 @@ func (p *Launcher) MustExecuteQuery(orgID platform.ID, query string) *QueryResul
 
 // ExecuteQuery executes the provided query against the ith query node.
 // Callers of ExecuteQuery must call Done on the returned QueryResults.
-func (p *Launcher) ExecuteQuery(orgID platform.ID, q string) (*QueryResults, error) {
-	p.queryController.Query(context.Background(), &query.Request{
+func (p *Launcher) ExecuteQuery(orgID platform.ID, q string, auth *platform.Authorization) (*QueryResults, error) {
+	fq, err:= p.queryController.Query(context.Background(), &query.Request{
+		Authorization: auth,
 		OrganizationID: orgID,
 		Compiler: lang.FluxCompiler{
-			Query: q,
-		},
-	})
-	return nil, nil
-	// return nil, p.queryController //.Query(orgID, query)
+		Query: q,
+	}})
+	if err!=nil{
+		return nil, err
+	}
+	if err = fq.Err(); err!=nil{
+		return nil, fq.Err()
+	}
+	return &QueryResults{
+		Results: <-fq.Ready(),
+		Query:   fq,
+	}, nil
+	 //.Query(orgID, query)
 }
 
 // QueryResults wraps a set of query results with some helper methods.

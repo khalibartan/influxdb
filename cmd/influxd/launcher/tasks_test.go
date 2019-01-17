@@ -47,12 +47,12 @@ func TestLauncher_Task(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	writeT, err := platform.NewPermissionAtID(bIn.ID, platform.WriteAction, platform.TasksResourceType, org.ID)
+	writeT, err := platform.NewPermission(platform.WriteAction, platform.TasksResourceType, org.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	readT, err := platform.NewPermissionAtID(bIn.ID, platform.ReadAction, platform.TasksResourceType, org.ID)
+	readT, err := platform.NewPermission(platform.ReadAction, platform.TasksResourceType, org.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,9 @@ stuff f=-123.456,b=true,s="hello"
 		t.Fatal(err)
 	}
 
-	resp.Body.Close()
+	if err = resp.Body.Close();err!=nil{
+		t.Fatal(err)
+	}
 
 	if resp.StatusCode != nethttp.StatusNoContent {
 		t.Fatalf("exp status %d; got %d", nethttp.StatusNoContent, resp.StatusCode)
@@ -165,7 +167,8 @@ from(bucket:"my_bucket_in") |> range(start:-5m) |> to(bucket:"my_bucket_out", or
 	// Explicitly set the now option so want and got have the same _start and _end values.
 	nowOpt := fmt.Sprintf("option now = () => %s\n", time.Unix(now, 0).UTC().Format(time.RFC3339))
 
-	res := be.MustExecuteQuery(org.ID, nowOpt+`from(bucket:"my_bucket_in") |> range(start:-5m)`)
+	res := be.MustExecuteQuery(org.ID, nowOpt+`from(bucket:"my_bucket_in") |> range(start:-5m)`, be.Auth)
+	defer res.Done()
 	fmt.Println("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! after loop 1.2")
 	// if len(res.Results) < 100000000000000000 {
 	// 	fmt.Println("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! after loop 1.201")
@@ -173,9 +176,10 @@ from(bucket:"my_bucket_in") |> range(start:-5m) |> to(bucket:"my_bucket_out", or
 	// 	t.Fail()
 	// }
 	// fmt.Println("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! after loop 1.205")
-	t.Fail()
 	want := make(map[string][]*executetest.Table) // Want the original.
 	i = 0
+	fmt.Println(res)
+	fmt.Println("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! after loop 1.209: ")
 	fmt.Println("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! after loop 1.21", res.First(t))
 	os.Stdout.Sync()
 	fmt.Println("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! after loop 1.22: ", res.Results)
@@ -201,7 +205,7 @@ from(bucket:"my_bucket_in") |> range(start:-5m) |> to(bucket:"my_bucket_out", or
 		executetest.NormalizeTables(w)
 	}
 	fmt.Println("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! after loop 1.5")
-	res = be.MustExecuteQuery(org.ID, nowOpt+`from(bucket:"my_bucket_out") |> range(start:-5m)`)
+	res = be.MustExecuteQuery(org.ID, nowOpt+`from(bucket:"my_bucket_out") |> range(start:-5m)`, be.Auth)
 	defer res.Done()
 	got := make(map[string][]*executetest.Table)
 	for k, v := range res.Results {
