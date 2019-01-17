@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	nethttp "net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -90,6 +91,7 @@ stuff f=-123.456,b=true,s="hello"
 
 	created := &platform.Task{
 		Organization: org.ID,
+		Owner:        *be.User,
 		Flux: fmt.Sprintf(`option task = {
  name: "my_task",
  every: 1s,
@@ -116,6 +118,7 @@ from(bucket:"my_bucket_in") |> range(start:-5m) |> to(bucket:"my_bucket_out", or
 	deadline := time.Now().Add(10 * time.Second) // Arbitrary deadline; 10s seems safe for -race on a resource-constrained system.
 	ndrString := time.Unix(ndr, 0).UTC().Format(time.RFC3339)
 	var targetRun platform.Run
+	i := 0
 	for {
 		t.Logf("Looking for created run...")
 		if time.Now().After(deadline) {
@@ -133,7 +136,8 @@ from(bucket:"my_bucket_in") |> range(start:-5m) |> to(bucket:"my_bucket_out", or
 			t.Log("No runs found yet...")
 			continue
 		}
-
+		fmt.Println("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! loop:", i)
+		i++
 		for _, r := range runs {
 			if r.ScheduledFor == ndrString {
 				targetRun = *r
@@ -156,14 +160,30 @@ from(bucket:"my_bucket_in") |> range(start:-5m) |> to(bucket:"my_bucket_out", or
 
 		break
 	}
+	fmt.Println("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! after loop")
 
 	// Explicitly set the now option so want and got have the same _start and _end values.
 	nowOpt := fmt.Sprintf("option now = () => %s\n", time.Unix(now, 0).UTC().Format(time.RFC3339))
 
 	res := be.MustExecuteQuery(org.ID, nowOpt+`from(bucket:"my_bucket_in") |> range(start:-5m)`)
-	defer res.Done()
+	fmt.Println("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! after loop 1.2")
+	// if len(res.Results) < 100000000000000000 {
+	// 	fmt.Println("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! after loop 1.201")
+	// 	os.Stdout.Sync()
+	// 	t.Fail()
+	// }
+	// fmt.Println("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! after loop 1.205")
+	t.Fail()
 	want := make(map[string][]*executetest.Table) // Want the original.
+	i = 0
+	fmt.Println("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! after loop 1.21", res.First(t))
+	os.Stdout.Sync()
+	fmt.Println("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! after loop 1.22: ", res.Results)
+	os.Stdout.Sync()
 	for k, v := range res.Results {
+		fmt.Println("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! after loop 1.3: ", i)
+		os.Stdout.Sync()
+		i++
 		if err := v.Tables().Do(func(tbl flux.Table) error {
 			ct, err := executetest.ConvertTable(tbl)
 			if err != nil {
@@ -175,10 +195,12 @@ from(bucket:"my_bucket_in") |> range(start:-5m) |> to(bucket:"my_bucket_out", or
 			t.Fatal(err)
 		}
 	}
+	fmt.Println("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! after loop 1.4")
+
 	for _, w := range want {
 		executetest.NormalizeTables(w)
 	}
-
+	fmt.Println("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! after loop 1.5")
 	res = be.MustExecuteQuery(org.ID, nowOpt+`from(bucket:"my_bucket_out") |> range(start:-5m)`)
 	defer res.Done()
 	got := make(map[string][]*executetest.Table)
@@ -194,10 +216,11 @@ from(bucket:"my_bucket_in") |> range(start:-5m) |> to(bucket:"my_bucket_out", or
 			t.Fatal(err)
 		}
 	}
-
+	fmt.Println("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! after loop 1.6")
 	for _, g := range got {
 		executetest.NormalizeTables(g)
 	}
+	fmt.Println("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! after loop 2")
 
 	if !cmp.Equal(got, want) {
 		t.Fatal("unexpected task result -want/+got", cmp.Diff(want, got))
@@ -211,6 +234,7 @@ from(bucket:"my_bucket_in") |> range(start:-5m) |> to(bucket:"my_bucket_out", or
 	if !cmp.Equal(targetRun, *showRun) {
 		t.Fatal("unexpected task result -want/+got\n", cmp.Diff(targetRun, showRun))
 	}
+	fmt.Println("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! after loop3")
 
 	// now lets see a logs
 	logs, _, err := be.TaskService().FindLogs(ctx, platform.LogFilter{Org: &org.ID, Task: &created.ID, Run: &targetRun.ID})
@@ -221,4 +245,6 @@ from(bucket:"my_bucket_in") |> range(start:-5m) |> to(bucket:"my_bucket_out", or
 	if len(logs) != 1 {
 		t.Fatalf("expected 1 log for run, got %d", len(logs))
 	}
+	fmt.Println("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! after loop4")
+
 }
