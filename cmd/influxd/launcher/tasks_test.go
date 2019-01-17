@@ -17,15 +17,15 @@ import (
 
 func TestLauncher_Task(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	//ctx := context.Background()
 
 	be := RunLauncherOrFail(t, ctx)
 	be.SetupOrFail(t)
 	defer be.ShutdownOrFail(t, ctx)
 
 	now := time.Now().Unix() // Need to track now at the start of the test, for a query later.
-
 	org := be.Org
+
 	bIn := &platform.Bucket{OrganizationID: org.ID, Name: "my_bucket_in"}
 	if err := be.BucketService().CreateBucket(context.Background(), bIn); err != nil {
 		t.Fatal(err)
@@ -35,37 +35,38 @@ func TestLauncher_Task(t *testing.T) {
 		t.Fatal(err)
 	}
 	u := be.User
+
+	writeBIn, err := platform.NewPermissionAtID(bIn.ID, platform.WriteAction, platform.BucketsResourceType, org.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	writeBOut, err := platform.NewPermissionAtID(bOut.ID, platform.WriteAction, platform.BucketsResourceType, org.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	writeT, err := platform.NewPermissionAtID(bIn.ID, platform.WriteAction, platform.TasksResourceType, org.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	readT, err := platform.NewPermissionAtID(bIn.ID, platform.ReadAction, platform.TasksResourceType, org.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx = pctx.SetAuthorizer(context.Background(), be.Auth)
+
 	// u := &platform.User{Name: "me"}
 	// if err := be.UserService().CreateUser(context.Background(), u); err != nil {
 	// 	t.Fatal(err)
 	// }
 
-	writeBIn, err := platform.NewPermissionAtID(bIn.ID, platform.WriteAction, platform.BucketsResource, org.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	writeBOut, err := platform.NewPermissionAtID(bOut.ID, platform.WriteAction, platform.BucketsResource, org.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	writeT, err := platform.NewPermissionAtID(bIn.ID, platform.WriteAction, platform.TasksResource, org.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	readT, err := platform.NewPermissionAtID(bIn.ID, platform.ReadAction, platform.TasksResource, org.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	be.Auth = &platform.Authorization{UserID: u.ID, OrgID: org.ID, Permissions: []platform.Permission{*writeBIn, *writeBOut, *writeT, *readT}}
 	if err := be.AuthorizationService().CreateAuthorization(context.Background(), be.Auth); err != nil {
 		t.Fatal(err)
 	}
-
-	ctx = pctx.SetAuthorizer(context.Background(), be.Auth)
 
 	resp, err := nethttp.DefaultClient.Do(
 		be.MustNewHTTPRequest(
