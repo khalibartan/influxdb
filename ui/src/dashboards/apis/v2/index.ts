@@ -1,5 +1,6 @@
 // Libraries
 import {dashboardsAPI, cellsAPI} from 'src/utils/api'
+import _ from 'lodash'
 
 // Types
 
@@ -167,4 +168,44 @@ export const updateView = async (
   const viewWithIDs: View = {...data, dashboardID, cellID}
 
   return viewWithIDs
+}
+
+export const addCellUpdateView = async (
+  dashboard: Dashboard,
+  cell: Cell,
+  view: View
+): Promise<View> => {
+  const createdCell = await addCell(dashboard.id, cell)
+  return updateView(dashboard.id, createdCell.id, view)
+}
+
+export const cloneDashboard = async (dashboardToClone: Dashboard) => {
+  const cellsToClone = dashboardToClone.cells
+
+  const dashboardNoCells = _.omit(dashboardToClone, ['cells'])
+
+  const createdDashboard = await createDashboard(dashboardNoCells)
+
+  const cellsLookup = {}
+
+  const viewPromises = []
+
+  cellsToClone.forEach(c => {
+    viewPromises.push(readView(dashboardToClone.id, c.id))
+    cellsLookup[c.id] = c
+  })
+
+  const views = await Promise.all(viewPromises)
+
+  const updatedViews = []
+
+  views.forEach(view => {
+    updatedViews.push(
+      addCellUpdateView(createdDashboard, cellsLookup[view.id], view)
+    )
+  })
+
+  await Promise.all(updatedViews)
+
+  return createdDashboard
 }
